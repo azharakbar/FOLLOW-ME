@@ -1,0 +1,141 @@
+#define trigPin 8       //Reciever Triggers Shorted To Pin8
+#define echoPin 2       //Reciever1 Echo
+#define echoPin3 3      //Reciever2 Echo
+
+#define trigPin2 9      //Transmitter Trigger
+
+#define led 11
+#define led2 12
+
+volatile int block = 0 ;
+
+volatile long start = 0 ;
+volatile long en = 0 ;
+
+volatile int found = 0 ;
+volatile int finished = 0 ;
+volatile int finishedNew = 0 ;
+
+volatile long startNew = 0 ;
+volatile long endNew = 0 ;
+
+
+void setup() {
+  Serial.begin (9600);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(trigPin2, OUTPUT);
+  pinMode(echoPin3, INPUT);  
+  pinMode(led, OUTPUT);
+  pinMode(led2, OUTPUT);
+
+  digitalWrite(trigPin2, LOW);  
+  delayMicroseconds(2); 
+
+  attachInterrupt ( 0 , pinISR , CHANGE ) ;
+  attachInterrupt ( 1 , pinISR2 , CHANGE ) ;
+}
+
+void rst(){
+      finished = 0 ;
+      found = 0 ;
+      endNew = 0 ;
+      startNew = 0 ;
+      finishedNew = 0 ;  
+}
+
+void Blink( long diff , int _led ){
+      if ( diff <= 300 && diff >= 20 )
+        digitalWrite ( _led , HIGH ) ;
+      else
+        digitalWrite ( _led , LOW ) ;    
+}
+
+void getDirexn1 ( long timeDiff ){
+  if ( timeDiff >= 0 && timeDiff <= 200 ){
+    Serial.println ( "I have To Go Straight" );  
+  } else {
+    Serial.println ( "Have To Go Left" );  
+  }
+}
+
+void getDirexn2 ( long timeDiff ){
+  if ( timeDiff >= 0 && timeDiff <= 200 ){
+    Serial.println ( "I have To Go Straight" );  
+  } else {
+    Serial.println ( "Have To Go Right" );  
+  }
+}
+
+void loop() {
+  long duration, distance;
+
+  digitalWrite(trigPin2, HIGH);
+  delayMicroseconds(10); 
+  digitalWrite(trigPin2, LOW);
+    
+  digitalWrite(trigPin, HIGH);
+  digitalWrite(trigPin, LOW);
+
+  if ( found == 1 ){
+    Serial.println ( "I FOUND FIRST" ) ;
+    if ( finished ){
+      finishedNew = endNew - startNew ;
+//      Serial.print("----------");
+      Serial.println ( finishedNew ) ;
+      getDirexn1 ( finishedNew ) ;
+      rst () ;
+    }
+  } else if ( found == 2 ) {
+    Serial.println ( "I FOUND SECOND" ) ;
+    if ( finished ){
+      finishedNew = endNew - startNew ;
+//      Serial.print("*********");
+      Serial.println ( finishedNew ) ;
+      getDirexn2 ( finishedNew ) ;
+      rst () ;
+    }
+  } else {
+    Serial.println ( "DIDNT FIND ANYTHING !!" ) ;
+  }
+
+  delay(1000);
+}
+
+void pinISR(){
+    if ( digitalRead ( echoPin ) ){
+     start = micros () ;
+    }
+    else{
+      if ( !found ){
+        startNew = micros() ;
+        found = 1 ;
+      } else if ( found == 2 && !finished ) {
+        endNew = micros () ;
+        finished = 1 ;
+      }
+      en = micros () ;
+      long diff = en - start ;
+      Blink ( diff , led ) ;
+    }
+}
+
+
+void pinISR2(){
+    if ( digitalRead ( echoPin3 ) ){
+     start = micros () ;
+    }
+    else{
+      if ( !found ){
+        startNew = micros() ;
+        found = 2 ;
+      } else if ( found == 1 && !finished ) {
+        endNew = micros () ;
+        finished = 1 ;
+      }
+      en = micros () ;
+      long diff = en - start ;
+      Blink ( diff , led2 ) ;
+    } 
+}
+
