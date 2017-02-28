@@ -1,0 +1,83 @@
+#define trigPin 8       //Reciever Triggers Shorted To Pin8
+#define echoPin 2       //Reciever1 Echo
+#define echoPin3 3      //Reciever2 Echo
+
+#define trigPin2 9      //Transmitter Trigger
+
+#define led 11
+#define led2 12
+
+int block = 0 ;
+
+void setup() {
+  Serial.begin (9600);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(trigPin2, OUTPUT);
+  pinMode(echoPin3, INPUT);  
+  pinMode(led, OUTPUT);
+  pinMode(led2, OUTPUT);
+
+  digitalWrite(trigPin2, LOW);  
+  delayMicroseconds(2); 
+
+  attachInterrupt ( 0 , pinISR , CHANGE ) ;
+  attachInterrupt ( 1 , pinISR2 , CHANGE ) ;
+}
+
+void loop() {
+  long duration, distance;
+
+  digitalWrite(trigPin2, HIGH);
+  delayMicroseconds(10); 
+  digitalWrite(trigPin2, LOW);
+    
+  digitalWrite(trigPin, HIGH);
+  digitalWrite(trigPin, LOW);
+
+  delay(100);
+}
+long start , en ;
+void pinISR(){
+  if ( !block ){
+    block = 1 ;    
+    if ( digitalRead ( echoPin ) ){
+     Serial.println ( "I AM HIGH" ) ; 
+     start = micros () ;
+    }
+    else{
+      Serial.print ( "I AM LOW" ) ;
+      en = micros () ;
+      long diff = en - start ;
+      Serial.println ( diff ) ;
+      if ( diff <= 300 && diff >= 20 )
+        digitalWrite ( led , HIGH ) ;
+      else
+        digitalWrite ( led , LOW ) ;    
+    }
+    block = 0 ;
+  }   
+}
+
+
+void pinISR2(){
+  if ( !block ){
+    block = 1 ;
+    if ( digitalRead ( echoPin3 ) ){
+     Serial.println ( "I AM HIGH" ) ; 
+     start = micros () ;
+    }
+    else{
+      Serial.print ( "I AM LOW" ) ;
+      en = micros () ;
+      long diff = en - start ;
+      Serial.println ( diff ) ;
+      if ( diff <= 300 && diff >= 20 )
+        digitalWrite ( led2 , HIGH ) ;
+      else
+        digitalWrite ( led2 , LOW ) ;    
+    } 
+    block = 0 ;
+  }    
+}
+

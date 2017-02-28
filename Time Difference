@@ -1,0 +1,135 @@
+#define trigPin 8       //Reciever Triggers Shorted To Pin8
+#define echoPin 2       //Reciever1 Echo
+#define echoPin3 3      //Reciever2 Echo
+
+#define trigPin2 9      //Transmitter Trigger
+
+#define led 11
+#define led2 12
+
+volatile int block = 0 ;
+
+volatile long start = 0 ;
+volatile long en = 0 ;
+
+volatile int found = 0 ;
+volatile int finished = 0 ;
+
+volatile long startNew = 0 ;
+volatile long endNew = 0 ;
+
+void calc(int pin){
+  while ( digitalRead(pin) ){
+    }
+}
+
+void setup() {
+  Serial.begin (9600);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(trigPin2, OUTPUT);
+  pinMode(echoPin3, INPUT);  
+  pinMode(led, OUTPUT);
+  pinMode(led2, OUTPUT);
+
+  digitalWrite(trigPin2, LOW);  
+  delayMicroseconds(2); 
+
+  attachInterrupt ( 0 , pinISR , CHANGE ) ;
+  attachInterrupt ( 1 , pinISR2 , CHANGE ) ;
+}
+
+void loop() {
+  long duration, distance;
+
+  digitalWrite(trigPin2, HIGH);
+  delayMicroseconds(10); 
+  digitalWrite(trigPin2, LOW);
+    
+  digitalWrite(trigPin, HIGH);
+  digitalWrite(trigPin, LOW);
+
+  if ( found == 1 ){
+    Serial.println ( "I FOUND FIRST" ) ;
+    if ( finished ){
+      Serial.print("----------");
+      Serial.println ( endNew - startNew ) ;
+      finished = 0 ;
+      found = 0 ;
+      endNew = 0 ;
+      startNew = 0 ;
+    }
+  } else if ( found == 2 ) {
+    Serial.println ( "I FOUND SECOND" ) ;
+    if ( finished ){
+      Serial.print("*********");
+      Serial.println ( endNew - startNew ) ;
+      finished = 0 ;
+      found = 0 ;
+      endNew = 0 ;
+      startNew = 0 ;      
+    }
+  } else {
+    Serial.println ( "DIDNT FIND ANYTHING !!" ) ;
+  }
+
+  delay(1000);
+}
+
+void pinISR(){
+//    detachInterrupt ( 1 ) ;
+    if ( digitalRead ( echoPin ) ){
+     Serial.println ( "I AM HIGH" ) ; 
+     start = micros () ;
+    }
+    else{
+//      start = micros () ;
+//      calc(3) ; 
+      if ( !found ){
+        startNew = micros() ;
+        found = 1 ;
+      } else if ( found == 2 && !finished ) {
+        endNew = micros () ;
+        finished = 1 ;
+      }
+      Serial.print ( "I AM LOW" ) ;
+      en = micros () ;
+      long diff = en - start ;
+      Serial.println ( diff ) ;
+      if ( diff <= 300 && diff >= 20 )
+        digitalWrite ( led , HIGH ) ;
+      else
+        digitalWrite ( led , LOW ) ;    
+    }
+//    attachInterrupt ( 1 , pinISR2 , CHANGE ) ;
+}
+
+
+void pinISR2(){
+//    detachInterrupt ( 0 ) ;
+    if ( digitalRead ( echoPin3 ) ){
+     Serial.println ( "I AM HIGH" ) ; 
+     start = micros () ;
+    }
+    else{
+//      start = micros () ;
+//      calc (1) ;
+      if ( !found ){
+        startNew = micros() ;
+        found = 2 ;
+      } else if ( found == 1 && !finished ) {
+        endNew = micros () ;
+        finished = 1 ;
+      }
+      Serial.print ( "I AM LOW" ) ;
+      en = micros () ;
+      long diff = en - start ;
+      Serial.println ( diff ) ;
+      if ( diff <= 300 && diff >= 20 )
+        digitalWrite ( led2 , HIGH ) ;
+      else
+        digitalWrite ( led2 , LOW ) ;    
+    } 
+//    attachInterrupt ( 0 , pinISR2 , CHANGE ) ;
+}
+
