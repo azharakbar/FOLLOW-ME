@@ -1,0 +1,348 @@
+#include <SoftwareSerial.h> 
+
+#define LS A1      // left sensor
+#define RS A0      // right sensor
+
+#define trigPin 8       //Reciever Triggers Shorted To Pin8
+#define echoPin 2       //Reciever1 Echo
+#define echoPin3 3      //Reciever2 Echo
+
+#define trigPin2 9      //Transmitter Trigger
+
+#define LMF 6
+#define LMB 11
+
+#define RMF 10
+#define RMB 5
+
+SoftwareSerial BTserial(12, 13); // RX | TX
+
+volatile char control ='X' ;
+
+volatile long start = 0 ;
+volatile long en = 0 ;
+
+volatile int found = 0 ;
+volatile int finished = 0 ;
+volatile int finishedNew = 0 ;
+
+volatile long startNew = 0 ;
+volatile long endNew = 0 ;
+
+volatile long diff1 = 0 ;
+volatile long diff2 = 0 ;
+
+volatile int soNear1 = 0 ;
+volatile int soNear2 = 0 ;
+
+char direxn = 'X' ;
+
+volatile long l1 = 0 ;
+volatile long l2 = 0 ;
+
+long normalize( long x ){ 
+  volatile long t = (x)*(255.0/6000) ; 
+  return t ;
+}
+
+void brake(){
+  direxn = 'X' ;
+  
+  digitalWrite ( 11 , LOW ) ;
+  digitalWrite ( 6 , LOW ) ;
+
+  digitalWrite ( 5 , LOW ) ;
+  digitalWrite ( 10 , LOW ) ;  
+}
+
+void forward(){
+  direxn = 'S' ;
+  digitalWrite ( 11 , LOW ) ;
+  digitalWrite ( 6 , HIGH ) ;
+
+  digitalWrite ( 10 , LOW ) ;
+  digitalWrite ( 5 , HIGH ) ;    
+}
+
+void right(){
+  direxn = 'R' ;
+  digitalWrite ( 11 , LOW ) ;
+  analogWrite ( 6 , 255 ) ;
+
+  digitalWrite ( 10 , LOW ) ;    //low
+  digitalWrite ( 5 , LOW ) ;    
+}
+
+void left(){
+  direxn = 'L' ;
+  analogWrite ( 11 , LOW  ) ;    //low
+  digitalWrite ( 6 , LOW ) ;
+  
+  digitalWrite ( 10 , LOW ) ;
+  analogWrite ( 5 , 230 ) ;    
+}
+
+void back(){
+  direxn = 'B' ;
+  analogWrite ( 11 , HIGH  ) ;    //low
+  digitalWrite ( 6 , LOW ) ;
+  
+  digitalWrite ( 10 , HIGH ) ;
+  digitalWrite ( 5 , LOW ) ;      
+}
+
+void setup() {
+  Serial.begin(9600) ;
+
+  BTserial.begin(115200);
+  BTserial.print("$$$");
+  delay(100);
+  BTserial.println("U,9600,N");
+  BTserial.begin(9600);
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(trigPin2, OUTPUT);
+  pinMode(echoPin3, INPUT);  
+
+  pinMode ( 6 , OUTPUT ) ;
+  pinMode ( 11 , OUTPUT ) ;
+  pinMode ( 10 , OUTPUT ) ;
+  pinMode ( 5 , OUTPUT ) ;
+
+  pinMode ( LS , INPUT ) ;
+  pinMode ( RS , INPUT ) ;
+  
+  digitalWrite(trigPin2, LOW);  
+  delayMicroseconds(2); 
+
+  attachInterrupt ( 0 , pinISR , CHANGE ) ;
+  attachInterrupt ( 1 , pinISR2 , CHANGE ) ;
+
+}
+
+void rst(){
+      finished = 0 ;
+      found = 0 ;
+      endNew = 0 ;
+      startNew = 0 ;
+      finishedNew = 0 ;  
+}
+
+int avail(){
+  if ( diff1 >= 8500 && diff2 >= 8500 ){
+    digitalWrite ( 13 , !digitalRead ( 13 ) ) ;
+    return 0 ;
+  } else {
+    digitalWrite ( 13 , LOW ) ;
+    return 1 ;
+  }
+}
+
+void Blink1( long diff ){
+//  Serial.print ( "***Blink1   ") ;
+//    Serial.println ( diff ) ;
+      if ( diff <= 300 && diff >= 20 ){
+        soNear1 = 1 ;
+      }
+      else{
+        soNear1 = 0 ;
+      }
+}
+
+void Blink2( long diff ){
+//  Serial.print ( "***Blink2   ") ;
+//    Serial.println ( diff ) ;  
+      if ( diff <= 300 && diff >= 20 ){
+        soNear2 = 1 ;
+      }
+      else{
+        soNear2 = 0 ;
+      }
+}
+
+void getDirexn1 ( long timeDiff ){
+//  Serial.print( timeDiff ) ;
+
+//  long t = normalize(timeDiff) ;
+//  Serial.println ( t ) ;  
+  
+  if ( timeDiff >= 0 && timeDiff <= 200 ){
+    forward() ;
+    Serial.println ( "FORWARD" );  
+  } else {
+    left() ;
+    Serial.println ( "LEFT" );  
+  }
+}
+
+void getDirexn2 ( long timeDiff ){
+//      Serial.print( timeDiff ) ;
+  long t = normalize(timeDiff) ;
+//  Serial.println ( t ) ;  
+  if ( timeDiff >= 0 && timeDiff <= 200 ){
+    forward() ;
+    Serial.println ( "FORWARD" );  
+  } else {
+    right() ;
+    Serial.println ( "RIGHT" );  
+  }
+}
+
+void loop() {
+  long duration, distance;
+
+  if ( BTserial.available() > 0 || control == 'A' || control == 'M' ){
+
+      int data = BTserial.read() ;
+      if ( data == 65 ){
+        Serial.println ("**ENTERING AUTO MODE**") ;
+         control = 'A' ;
+      } else if ( data == 66 ){
+        Serial.println ("**DISCONNECTING**") ;
+        control = 'B' ;
+      } else if ( data == 'M' ){
+        Serial.println ("**ENTERING MANUAL MODE**") ;
+        control = 'M' ;
+      }
+      Serial.print("I RECIEVED : ") ;
+      Serial.println(data) ;
+      Serial.print ("CONTROL : ");
+      Serial.println ( control ) ;
+      if ( control == 'A' ){
+        digitalWrite(trigPin, HIGH);
+        digitalWrite(trigPin, LOW);
+      
+        if ( avail() == 0 ){
+          brake() ;
+          Serial.println ( "NO SIGNAL" );
+          BTserial.println("V");
+  //        BTserial.println ( "NO SIGNAL" );   
+        } else if ( soNear1 || soNear2  ){
+          brake() ;
+      //    Serial.println ( "TOO CLOSE" );   
+        } else {
+            if ( found == 1 ){
+  //            Serial.println ( "I FOUND FIRST" ) ;
+              if ( finished == 1 ){
+                finishedNew = endNew - startNew ;
+                getDirexn1 ( finishedNew ) ;
+                rst () ;
+              }
+            } else if ( found == 2 ) {
+  //            Serial.println ( "I FOUND SECOND" ) ;
+              if ( finished == 1 ){
+                finishedNew = endNew - startNew ;
+                getDirexn2 ( finishedNew ) ;
+                rst () ;
+              }
+            }
+          }         
+      } else if ( control == 'M' ){
+        if ( data == 'U' ){
+          Serial.println("MANUALLY FORWARD");
+          forward() ;
+        } else if ( data == 'D' ){
+          Serial.println("MANUALLY BACKWARD");
+          back() ;
+        } else if ( data == 'L' ){
+          Serial.println("MANUALLY LEFT");
+          left(); 
+        } else if ( data == 'R' ){
+          Serial.println("MANUALLY RIGHT");
+          right() ;
+        } else if ( data == 'S' ) {
+          Serial.println("STOPPED");
+          brake() ;          
+        }
+      } else if ( control == 'B' ){
+        Serial.println("GOING BACK TO TROLLEY PARK");
+          if(digitalRead(LS) && digitalRead(RS))     // Move Forward
+          {
+            forward() ;
+          }
+          
+          if(!(digitalRead(LS)) && digitalRead(RS))     // Turn right
+          {
+            right() ;
+          }
+          
+          if(digitalRead(LS) && !(digitalRead(RS)))     // turn left
+          {
+            left() ;
+          }
+          
+          if(!(digitalRead(LS)) && !(digitalRead(RS)))     // stop
+          {
+            brake() ;
+          }
+      }
+
+      
+
+      delay(500);
+  } else if ( control == 'B' ){
+      if(digitalRead(LS) && digitalRead(RS))     // Move Forward
+      {
+        forward() ;
+      }
+      
+      if(!(digitalRead(LS)) && digitalRead(RS))     // Turn right
+      {
+        right() ;
+      }
+      
+      if(digitalRead(LS) && !(digitalRead(RS)))     // turn left
+      {
+        left() ;
+      }
+      
+      if(!(digitalRead(LS)) && !(digitalRead(RS)))     // stop
+      {
+        brake() ;
+        control = 'X' ;
+      }
+   } else {
+    Serial.println ( "NO CONNEXN" ) ;
+  }
+}
+
+void pinISR(){
+    if ( digitalRead ( echoPin ) ){
+     start = micros () ;
+    }
+    else{
+       en = micros () ;
+      diff1 = en - start ;      
+//      Blink1 ( diff1 ) ;
+      if ( found == 0 && !soNear1 && !soNear2 ){
+        startNew = micros() ;
+        found = 1 ;
+      } else if ( found == 2 && !finished ) {
+        endNew = micros () ;
+        finished = 1 ;
+      }      
+      
+    }
+}
+
+
+void pinISR2(){
+    if ( digitalRead ( echoPin3 ) ){
+     start = micros () ;
+    }
+    else{
+       en = micros () ;
+      diff2 = en - start ;
+//      Blink2 ( diff2 ) ;
+      if ( found == 0 && !soNear1 && !soNear2 ){
+        startNew = micros() ;
+        found = 2 ;
+      } else if ( found == 1 && !finished ) {
+        endNew = micros () ;
+        finished = 1 ;
+      }
+      
+    } 
+}
+
