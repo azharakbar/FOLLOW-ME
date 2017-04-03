@@ -4,8 +4,8 @@
 #define RS A0      // right sensor
 
 #define trigPin 8       //Reciever Triggers Shorted To Pin8
-#define echoPin 2       //Reciever1 Echo
-#define echoPin3 3      //Reciever2 Echo
+#define echoPin1 2       //Reciever1 Echo
+#define echoPin2 3      //Reciever2 Echo
 
 #define LMF 6
 #define LMB 11
@@ -56,8 +56,8 @@ void setup() {
   BTserial.begin(9600);
 
   pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT);
-  pinMode(echoPin3, INPUT);
+  pinMode(echoPin1, INPUT);
+  pinMode(echoPin2, INPUT);
 
   pinMode ( 6 , OUTPUT ) ;
   pinMode ( 11 , OUTPUT ) ;
@@ -135,23 +135,13 @@ void loop() {
     delay(500);
   } else if ( control == 'B' ) {
     Serial.println("GOING BACK TO TROLLEY PARK");
-    if (digitalRead(LS) && digitalRead(RS))    // Move Forward
-    {
+    if ( digitalRead(LS) && digitalRead(RS) ){
       forward() ;
-    }
-
-    if (!(digitalRead(LS)) && digitalRead(RS))    // Turn right
-    {
+    } else if ( !digitalRead(LS) && digitalRead(RS) ){
       right() ;
-    }
-
-    if (digitalRead(LS) && !(digitalRead(RS)))    // turn left
-    {
+    } else if ( digitalRead(LS) && !digitalRead(RS) ){
       left() ;
-    }
-
-    if (!(digitalRead(LS)) && !(digitalRead(RS)))    // stop
-    {
+    } else if ( !digitalRead(LS) && !digitalRead(RS) ){
       brake() ;
       control = 'X' ;
     }
@@ -180,9 +170,8 @@ void getDirexn2 ( long timeDiff ) {
   }
 }
 
-
 void pinISR() {
-  if ( digitalRead ( echoPin ) ) {
+  if ( digitalRead ( echoPin1 ) ) {
     start = micros () ;
   }
   else {
@@ -198,9 +187,8 @@ void pinISR() {
   }
 }
 
-
 void pinISR2() {
-  if ( digitalRead ( echoPin3 ) ) {
+  if ( digitalRead ( echoPin2 ) ) {
     start = micros () ;
   }
   else {
@@ -245,38 +233,46 @@ void brake() {
 }
 
 void forward() {
-  direxn = 'S' ;
-  digitalWrite ( 11 , LOW ) ;
-  digitalWrite ( 6 , HIGH ) ;
+  if ( direxn != 'S' ){
+    direxn = 'S' ;
+    digitalWrite ( 11 , LOW ) ;
+    digitalWrite ( 6 , HIGH ) ;
 
-  digitalWrite ( 10 , LOW ) ;
-  digitalWrite ( 5 , HIGH ) ;
+    digitalWrite ( 10 , LOW ) ;
+    digitalWrite ( 5 , HIGH ) ;
+  }
 }
 
 void right() {
-  direxn = 'R' ;
-  digitalWrite ( 11 , LOW ) ;
-  analogWrite ( 6 , 255 ) ;
+  if ( direxn != 'R' ){
+    direxn = 'R' ;
+    digitalWrite ( 11 , LOW ) ;
+    analogWrite ( 6 , 255 ) ;
 
-  digitalWrite ( 10 , LOW ) ;    //low
-  digitalWrite ( 5 , LOW ) ;
+    digitalWrite ( 10 , LOW ) ; 
+    digitalWrite ( 5 , LOW ) ;
+  }
 }
 
 void left() {
-  direxn = 'L' ;
-  analogWrite ( 11 , LOW  ) ;    //low
-  digitalWrite ( 6 , LOW ) ;
+  if ( direxn != 'L' ){
+    direxn = 'L' ;
+    analogWrite ( 11 , LOW  ) ; 
+    digitalWrite ( 6 , LOW ) ;
 
-  digitalWrite ( 10 , LOW ) ;
-  analogWrite ( 5 , 230 ) ;
+    digitalWrite ( 10 , LOW ) ;
+    analogWrite ( 5 , 230 ) ;
+  }
 }
 
 void back() {
-  direxn = 'B' ;
-  analogWrite ( 11 , HIGH  ) ;    //low
-  digitalWrite ( 6 , LOW ) ;
+  if ( direxn != 'B' ){
+    direxn = 'B' ;
+    analogWrite ( 11 , HIGH  ) ; 
+    digitalWrite ( 6 , LOW ) ;
 
-  digitalWrite ( 10 , HIGH ) ;
-  digitalWrite ( 5 , LOW ) ;
+    digitalWrite ( 10 , HIGH ) ;
+    digitalWrite ( 5 , LOW ) ;
+  }
 }
 
